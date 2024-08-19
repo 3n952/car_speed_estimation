@@ -12,6 +12,9 @@ class Perspective_transformer:
     
     # tracking 되는 객체에 대한 bottom center 좌표를 변환
     def transform_points(self, points: np.array):
+        if points.size == 0:
+            return points
+        
         # perspectiveTransform 입력 인자로 3채널 array가 필요
         reshaped_points = points.reshape(-1, 1, 2).astype(np.float32)
         transformed_points = cv2.perspectiveTransform(reshaped_points, self.m)
