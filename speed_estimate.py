@@ -110,13 +110,13 @@ def main():
     frame_generator = sv.get_video_frames_generator(args.source_video_path)
 
     # polygon zone init
-    polygon_zone = sv.PolygonZone(SOURCE_vehicle1, frame_resolution_wh=video_info.resolution_wh )
+    polygon_zone = sv.PolygonZone(SOURCE_traffic1, frame_resolution_wh=video_info.resolution_wh )
 
     # 또 다른 polygon zone 만들기
     # polygon_zone2 = sv.PolygonZone(SOURCE2, frame_resolution_wh=video_info.resolution_wh )
 
     # perspective transform 행렬
-    transformer_m = perspective_transformation.Perspective_transformer(source = SOURCE_vehicle1, target = TARGET_vehicle1)
+    transformer_m = perspective_transformation.Perspective_transformer(source = SOURCE_traffic1, target = TARGET_traffic1)
 
 
     # speed 계산을 위한 죄표 초기화
