@@ -21,8 +21,10 @@ SOURCE_vehicle1= np.array([[1252, 787], [2298, 803], [5039, 2159], [-550, 2159]]
 SOURCE_traffic1 = np.array([[452, 337],[800, 337],[1270, 690],[-100, 690]])
 SOURCE_traffic2= np.array([[230, 160],[400, 160], [680, 340], [-50, 340]])
 
+SOURCE_test_video = np.array([[282, 150],[355, 154], [160, 390], [-55, 350]])
+
 # 실제 거리 영역 좌표(m)
-TARGET = np.array([[0,0], [24, 0], [24, 249], [0, 249]])
+TARGET = np.array([[0,0], [10, 0], [10, 50], [0, 50]])
 
 # arguments 설정
 def parse_arguments():
@@ -53,13 +55,16 @@ def main():
     video_info = sv.VideoInfo.from_video_path(args.source_video_path)
 
     # yolov5 model load
-    model = load_yolov5_model(r'..\car_model_recogize\Yolov5\yolov5_run\yolov5s.pt')
+    model = load_yolov5_model(r'C:\Users\QBIC\Desktop\workspace\car_speed_estimation\weights\yolov5s.pt')
 
     #tracking using supervision
-    byte_track = sv.ByteTrack(frame_rate=video_info.fps,
-                              track_thresh=0.55,  # 추적 임계값
-                              match_thresh=0.8,  # 매칭 임계값
-                            )
+    byte_track = sv.ByteTrack(
+        frame_rate=video_info.fps, track_thresh= 0.5
+    )
+    # byte_track = sv.ByteTrack(frame_rate=video_info.fps,
+    #                           track_thresh=0.55,  # 추적 임계값
+    #                           match_thresh=0.8,  # 매칭 임계값
+    #                         )
 
     thickness = sv.calculate_optimal_line_thickness(
         resolution_wh = video_info.resolution_wh
@@ -68,25 +73,32 @@ def main():
         resolution_wh = video_info.resolution_wh
     )
 
-    bounding_box_annotator = sv.BoundingBoxAnnotator(thickness=thickness)
-    label_annotator = sv.LabelAnnotator(text_scale=text_scale)
+    bounding_box_annotator = sv.BoxAnnotator(thickness=thickness)
+    label_annotator = sv.LabelAnnotator(text_scale=text_scale, text_thickness=thickness, text_position=sv.Position.BOTTOM_CENTER)
+    
+    trace_annotator = sv.TraceAnnotator(
+        thickness=thickness,
+        trace_length=video_info.fps * 2,
+        position=sv.Position.BOTTOM_CENTER,
+    )
+
     frame_generator = sv.get_video_frames_generator(args.source_video_path)
 
     # polygon zone init
-    polygon_zone = sv.PolygonZone(SOURCE_traffic2, frame_resolution_wh=video_info.resolution_wh )
+    polygon_zone = sv.PolygonZone(SOURCE_test_video, frame_resolution_wh=video_info.resolution_wh )
 
     # 또 다른 polygon zone 만들기
     # polygon_zone2 = sv.PolygonZone(SOURCE2, frame_resolution_wh=video_info.resolution_wh )
 
     # perspective transform 행렬
-    transformer_m = perspective_transformation.Perspective_transformer(source = SOURCE_traffic1, target = TARGET)
-    print(transformer_m)
+    transformer_m = perspective_transformation.Perspective_transformer(source = SOURCE_test_video, target = TARGET)
+
 
     # speed 계산을 위한 죄표 초기화
-    x_coordinates = defaultdict(lambda: deque(maxlen = video_info.fps))
+    # x_coordinates = defaultdict(lambda: deque(maxlen = video_info.fps))
     y_coordinates = defaultdict(lambda: deque(maxlen = video_info.fps))
 
-
+    
     for frame in frame_generator:
 
         # model infer (detect.py)
@@ -95,46 +107,38 @@ def main():
         # yolov5 detect 반환 값에 대한 sv.Detections.from_yolov5 모듈 적용
         detections = sv.Detections.from_yolov5(result)
 
+        # confidence 이상인 값만 추출
+        detections = detections[detections.confidence > 0.5]
+
+
         # polygon zone 
         detections = detections[polygon_zone.trigger(detections)]
         #detections = detections[polygon_zone2.trigger(detections)]
+
+        detections = detections.with_nms(threshold=0.5)
 
         # 객체 탐지 반환 값을 가지고 tracking
         detections = byte_track.update_with_detections(detections= detections)
 
         # 탐지된 객체의 bottom center 좌표
         car_points = detections.get_anchors_coordinates(anchor=sv.Position.BOTTOM_CENTER) 
-        # perspective transformation 적용 
         car_points = transformer_m.transform_points(points=car_points).astype(int)
+            
 
-        labels = []
-
-        for tracker_id, [x, y] in zip(detections.tracker_id, car_points):
-            # 직선도로의 경우 y 좌표값만 사용.
-            y_coordinates[tracker_id].append(y)
-            if len(y_coordinates[tracker_id]) < video_info.fps / 2:
-                labels.append(f"#{tracker_id}")
-            else:
-                # deque 자료구조에서 반환
-                y_coordinates_start = y_coordinates[tracker_id][-1]
-                y_coordinates_end = y_coordinates[tracker_id][0]
-                distance = abs(y_coordinates_start - y_coordinates_end)
-                time = len(y_coordinates[tracker_id] / video_info.fps)
-                speed = distance / time * 3.6
-                labels.append(f"#{tracker_id} {int(speed)} km/h")
+        # perspective transformation 적용 
+        #car_points = transformer_m.transform_points(points=car_points).astype(int)
 
 
-
-
-
-        # labels = [
-        #     f"#{tracker_id}" for tracker_id in detections.tracker_id
-        # ]
+        labels = [
+            f"#{tracker_id}" for tracker_id in detections.tracker_id
+        ]
 
         annotated_frame = frame.copy()
 
-        annotated_frame = sv.draw_polygon(annotated_frame, polygon=SOURCE_traffic2, color=sv.Color.RED)
-        #annotated_frame = sv.draw_polygon(annotated_frame, polygon=SOURCE2, color=sv.Color.BLUE)
+        annotated_frame = trace_annotator.annotate(scene=annotated_frame, detections=detections)
+            
+        annotated_frame = sv.draw_polygon(annotated_frame, polygon=SOURCE_test_video, color=sv.Color.RED, thickness=1)
+            #annotated_frame = sv.draw_polygon(annotated_frame, polygon=SOURCE2, color=sv.Color.BLUE)
 
         annotated_frame = bounding_box_annotator.annotate(
             scene=annotated_frame, detections=detections
@@ -144,12 +148,15 @@ def main():
             scene=annotated_frame, detections=detections, labels = labels
         )
 
+        
+
         cv2.imshow("annotated_frame", annotated_frame)
+            
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     
-    cv2.destroyAllWindows()
 
+    cv2.destroyAllWindows()
 if __name__ == '__main__':
     main()
 

@@ -22,12 +22,16 @@ SOURCE_vehicle1= np.array([[1252, 787], [2298, 803], [5039, 2159], [-550, 2159]]
 SOURCE_traffic1 = np.array([[452, 337],[800, 337],[1270, 690],[-100, 690]])
 SOURCE_traffic2= np.array([[230, 160],[400, 160], [680, 340], [-50, 340]])
 
+SOURCE_test_video = np.array([[282, 150],[355, 154], [160, 390], [-55, 350]])
+
 # 실제 거리 영역 좌표(m) lt, rt, rb, lb
 # 가로 250 세로 50m라고 가정
 TARGET_vehicle1 = np.array([[0,0], [49, 0], [49, 249], [0, 249]])
 
 # 가로 13m 세로 40m라고 가정
 TARGET_traffic1 = np.array([[0,0], [12, 0], [12, 39], [0, 39]])
+
+TARGET_test = np.array([[0,0], [10, 0], [10, 50], [0, 50]])
 
 # arguments 설정
 def parse_arguments():
@@ -61,7 +65,7 @@ def parse_arguments():
         type=float,
     )
     parser.add_argument(
-        "--iou_threshold", default=0.6, help="IOU threshold for the model", type=float
+        "--iou_threshold", default=0.4, help="IOU threshold for the model", type=float
     )
     
     return parser.parse_args()
