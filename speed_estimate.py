@@ -31,7 +31,7 @@ TARGET_vehicle1 = np.array([[0,0], [49, 0], [49, 249], [0, 249]])
 # 가로 13m 세로 40m라고 가정
 TARGET_traffic1 = np.array([[0,0], [12, 0], [12, 39], [0, 39]])
 
-TARGET_test = np.array([[0,0], [10, 0], [10, 50], [0, 50]])
+TARGET_test = np.array([[0,0], [10, 0], [10, 55], [0, 55]])
 
 # arguments 설정
 def parse_arguments():
@@ -60,12 +60,12 @@ def parse_arguments():
 
     parser.add_argument(
         "--confidence_threshold",
-        default=0.55,
+        default=0.35,
         help="Confidence threshold for the model",
         type=float,
     )
     parser.add_argument(
-        "--iou_threshold", default=0.4, help="IOU threshold for the model", type=float
+        "--iou_threshold", default=0.5, help="IOU threshold for the model", type=float
     )
     
     return parser.parse_args()
@@ -114,13 +114,13 @@ def main():
     frame_generator = sv.get_video_frames_generator(args.source_video_path)
 
     # polygon zone init
-    polygon_zone = sv.PolygonZone(SOURCE_traffic1, frame_resolution_wh=video_info.resolution_wh )
+    polygon_zone = sv.PolygonZone(SOURCE_test_video, frame_resolution_wh=video_info.resolution_wh )
 
     # 또 다른 polygon zone 만들기
     # polygon_zone2 = sv.PolygonZone(SOURCE2, frame_resolution_wh=video_info.resolution_wh )
 
     # perspective transform 행렬
-    transformer_m = perspective_transformation.Perspective_transformer(source = SOURCE_traffic1, target = TARGET_traffic1)
+    transformer_m = perspective_transformation.Perspective_transformer(source = SOURCE_test_video, target = TARGET_test)
 
 
     # speed 계산을 위한 죄표 초기화
@@ -161,8 +161,10 @@ def main():
                 y_coordinates[tracker_id].append(y)
 
             labels = []
+            #speed_tracking = []
 
             for tracker_id in detections.tracker_id:
+                # 최소 0.5초 동안 탐지된 객체들만 tracking
                 if len(y_coordinates[tracker_id]) < video_info.fps / 2:
                     labels.append(f"#{tracker_id}")
                 else:
@@ -173,9 +175,7 @@ def main():
                     time = len(y_coordinates[tracker_id]) / video_info.fps
                     speed = distance / time * 3.6
                     labels.append(f"#{tracker_id} {int(speed)} km/h")
-
-
-
+                    #speed_tracking.append(speed)
 
 
             # labels = [
@@ -186,7 +186,7 @@ def main():
 
             annotated_frame = trace_annotator.annotate(scene=annotated_frame, detections=detections)
             
-            annotated_frame = sv.draw_polygon(annotated_frame, polygon=SOURCE_vehicle1, color=sv.Color.RED)
+            annotated_frame = sv.draw_polygon(annotated_frame, polygon=SOURCE_test_video, color=sv.Color.RED)
             #annotated_frame = sv.draw_polygon(annotated_frame, polygon=SOURCE2, color=sv.Color.BLUE)
 
             annotated_frame = bounding_box_annotator.annotate(
