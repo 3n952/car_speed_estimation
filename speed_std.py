@@ -12,11 +12,15 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 from Utils import perspective_transformation
 
-# polygon 영역(관심영역 좌표 지정)
+# polygon 영역(관심영역 좌표 지정) / # 실제 거리 영역 좌표(m) lt, rt, rb, lb
+# test1.mp4
 SOURCE_test_video = np.array([[282, 150],[355, 154], [160, 390], [-55, 350]])
-
-# 실제 거리 영역 좌표(m) lt, rt, rb, lb
 TARGET_test = np.array([[0,0], [10, 0], [10, 55], [0, 55]])
+
+# traffic1.mp4
+#SOURCE_test_video = np.array([[452, 337],[800, 337],[1270, 690],[-100, 690]])
+#TARGET_test = np.array([[0,0], [12, 0], [12, 39], [0, 39]])
+
 
 # arguments 직접 설정
 source_video_path = r'C:\Users\QBIC\Desktop\workspace\car_speed_estimation\data\test1.mp4'
@@ -110,7 +114,7 @@ for frame in frame_generator:
     for tracker_id, [_, y] in zip(detections.tracker_id, car_points):
         y_coordinates[tracker_id].append(y)
 
-    for tracker_id in detections.tracker_id:
+    # for tracker_id in detections.tracker_id:
         # 최소 0.5초 동안 탐지된 객체들만 tracking
         if len(y_coordinates[tracker_id]) < video_info.fps / 2:
             continue

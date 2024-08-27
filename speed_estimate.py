@@ -18,20 +18,21 @@ from Utils import perspective_transformation
 # 주의사항: 여러개 polygon 중 겹치는 부분에 대해서만 tracking 한다.
 # lt, rt, rb, lb
 # polygon 영역(관심영역 좌표 지정)
-SOURCE_vehicle1= np.array([[1252, 787], [2298, 803], [5039, 2159], [-550, 2159]])
-SOURCE_traffic1 = np.array([[452, 337],[800, 337],[1270, 690],[-100, 690]])
-SOURCE_traffic2= np.array([[230, 160],[400, 160], [680, 340], [-50, 340]])
+# SOURCE_vehicle1= np.array([[1252, 787], [2298, 803], [5039, 2159], [-550, 2159]])
+# SOURCE_traffic1 = np.array([[452, 337],[800, 337],[1270, 690],[-100, 690]])
+# SOURCE_traffic2= np.array([[230, 160],[400, 160], [680, 340], [-50, 340]])
+#SOURCE_test = np.array([[282, 150],[355, 154], [160, 390], [-55, 350]])
 
-SOURCE_test_video = np.array([[282, 150],[355, 154], [160, 390], [-55, 350]])
+SOURCE_test = np.array([[282, 150],[355, 154], [160, 390], [-55, 350]])
+TARGET_test = np.array([[0,0], [10, 0], [10, 55], [0, 55]])
+
 
 # 실제 거리 영역 좌표(m) lt, rt, rb, lb
 # 가로 250 세로 50m라고 가정
-TARGET_vehicle1 = np.array([[0,0], [49, 0], [49, 249], [0, 249]])
-
+#TARGET_vehicle1 = np.array([[0,0], [49, 0], [49, 249], [0, 249]])
 # 가로 13m 세로 40m라고 가정
-TARGET_traffic1 = np.array([[0,0], [12, 0], [12, 39], [0, 39]])
-
-TARGET_test = np.array([[0,0], [10, 0], [10, 55], [0, 55]])
+#TARGET_traffic1 = np.array([[0,0], [12, 0], [12, 39], [0, 39]])
+#TARGET_test = np.array([[0,0], [10, 0], [10, 55], [0, 55]])
 
 # arguments 설정
 def parse_arguments():
@@ -73,7 +74,7 @@ def parse_arguments():
 # yolov5모델 로드를 위한 함수
 def load_yolov5_model(weights_path):
     # Load the model
-    model = torch.hub.load('ultralytics/yolov5', 'custom', path=weights_path, force_reload=True)
+    model = torch.hub.load('ultralytics/yolov5', 'custom', path=weights_path, force_reload=False)
     model.eval()  # Set model to evaluation mode
     return model
 
@@ -88,7 +89,7 @@ def main():
 
     #tracking using supervision
     byte_track = sv.ByteTrack(
-        frame_rate=video_info.fps, track_thresh=args.confidence_threshold
+        frame_rate=video_info.fps, track_activation_threshold=args.confidence_threshold
     )
     # byte_track = sv.ByteTrack(frame_rate=video_info.fps,
     #                           track_thresh=0.55,  # 추적 임계값
@@ -114,13 +115,13 @@ def main():
     frame_generator = sv.get_video_frames_generator(args.source_video_path)
 
     # polygon zone init
-    polygon_zone = sv.PolygonZone(SOURCE_test_video, frame_resolution_wh=video_info.resolution_wh )
+    polygon_zone = sv.PolygonZone(SOURCE_test, frame_resolution_wh=video_info.resolution_wh )
 
     # 또 다른 polygon zone 만들기
     # polygon_zone2 = sv.PolygonZone(SOURCE2, frame_resolution_wh=video_info.resolution_wh )
 
     # perspective transform 행렬
-    transformer_m = perspective_transformation.Perspective_transformer(source = SOURCE_test_video, target = TARGET_test)
+    transformer_m = perspective_transformation.Perspective_transformer(source = SOURCE_test, target = TARGET_test)
 
 
     # speed 계산을 위한 죄표 초기화
@@ -186,7 +187,7 @@ def main():
 
             annotated_frame = trace_annotator.annotate(scene=annotated_frame, detections=detections)
             
-            annotated_frame = sv.draw_polygon(annotated_frame, polygon=SOURCE_test_video, color=sv.Color.RED)
+            annotated_frame = sv.draw_polygon(annotated_frame, polygon=SOURCE_test, color=sv.Color.RED)
             #annotated_frame = sv.draw_polygon(annotated_frame, polygon=SOURCE2, color=sv.Color.BLUE)
 
             annotated_frame = bounding_box_annotator.annotate(
